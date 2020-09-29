@@ -1,14 +1,17 @@
 import Fluent
 import Vapor
+import TelegramBot
+import TelegramBotVapor
 
 func routes(_ app: Application) throws {
-    app.get { req in
-        return "It works!"
-    }
+    // Telegram webhooks
+    let telegramBot = TelegramReceiveApi()
+    let controller = BotController(
+        app: app
+    )
 
-    app.get("hello") { req -> String in
-        return "Hello, world!"
-    }
+    telegramBot.messageUpdate = controller.getMessage
+    telegramBot.callbackQueryUpdate = controller.getCallback
 
-    try app.register(collection: TodoController())
+    telegramBot.setupWebhook(path: app.customConfigService.telegramToken, routerFunction: app.telegramRegister)
 }
