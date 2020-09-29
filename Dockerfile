@@ -42,7 +42,15 @@ FROM swift:5.2-focal-slim
 
 # Make sure all system packages are up to date.
 RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true && \
-    apt-get -q update && apt-get -q dist-upgrade -y && rm -r /var/lib/apt/lists/*
+    apt-get -q update && apt-get -q dist-upgrade -y
+
+# youtube-dl
+RUN apt-get -q install ffmpeg
+RUN apt-get -q install python3.8
+RUN apt-get -q install youtube-dl
+
+# Vapor Shit
+RUN rm -r /var/lib/apt/lists/*
 
 # Create a vapor user and group with /app as its home directory
 RUN useradd --user-group --create-home --system --skel /dev/null --home-dir /app vapor
