@@ -25,7 +25,7 @@ struct YoutubeDL {
         let filePath = "\"\(tmpPath)/\(tmpName).%(ext)s\""
 
         let command = """
-        /usr/local/bin/youtube-dl -x --audio-format mp3 --ffmpeg-location /usr/local/bin --embed-thumbnail -o \(filePath) "\(videoUrl)"
+        youtube-dl -x --audio-format mp3 --embed-thumbnail -o \(filePath) "\(videoUrl)"
         """
 
         let success = shell(command.split(separator: " ").map { String($0) })
@@ -37,7 +37,7 @@ struct YoutubeDL {
             let ct = item.snippet.channelTitle.replacingOccurrences(of: "\"", with: "\\\"")
             let t = item.snippet.title.decodingHTMLEntities().replacingOccurrences(of: "\"", with: "\\\"")
             let ffmpeg = """
-            /usr/local/bin/ffmpeg -i \(fileName) -c copy -metadata artist="\(ct)" -metadata title="\(t)" \(fileNameTmp)
+            ffmpeg -i \(fileName) -c copy -metadata artist="\(ct)" -metadata title="\(t)" \(fileNameTmp)
             """
             if shell(ffmpeg.split(separator: " ").map { String($0) }) != 0 {
                 return nil
@@ -59,7 +59,7 @@ struct YoutubeDL {
     private func shell(_ args: [String]) -> Int32 {
         let task = Process()
         task.launchPath = "/bin/bash"
-        task.arguments = ["-c"] + ["PATH=/usr/local/bin:$PATH \(args.joined(separator: " "))"]
+        task.arguments = ["-c"] + ["PATH=/usr/bin:/usr/local/bin:$PATH \(args.joined(separator: " "))"]
         task.launch()
         task.waitUntilExit()
         return task.terminationStatus
@@ -70,7 +70,7 @@ struct YoutubeDL {
         let pipe = Pipe()
 
         task.standardOutput = pipe
-        task.arguments = ["-c", "PATH=/usr/local/bin:$PATH \(command)"]
+        task.arguments = ["-c", "PATH=/usr/bin:/usr/local/bin:$PATH \(command)"]
         task.launchPath = "/bin/bash"
         task.launch()
 
