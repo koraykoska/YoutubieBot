@@ -16,6 +16,7 @@ public func configure(_ app: Application) throws {
 
     app.migrations.add(CreateTodo())
     app.migrations.add(CreateSearchVideoCallbackData())
+    app.migrations.add(CreateYoutubeMP3TelegramCache())
 
     // register routes
     try routes(app)

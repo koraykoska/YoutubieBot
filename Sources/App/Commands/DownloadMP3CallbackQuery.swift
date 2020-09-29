@@ -81,32 +81,56 @@ class DownloadMP3CallbackQuery: BaseCallbackQuery {
                     )
                 )
 
-                // Download file
-                let youtubeDL = YoutubeDL()
+                // Check Cache
+                YoutubeMP3TelegramCache.query(on: self.app.db).filter(\.$youtubeId, .equal, videoId).first().map { cache in
+                    if let cache = cache {
+                        // Telegram already has a cache copy of this file
+                        let audio = TelegramSendAudio(
+                            chatId: .int(id: chatId),
+                            audio: cache.telegramId,
+                            caption: name,
+                            performer: item.snippet.channelTitle,
+                            title: name
+                        )
 
-                guard let mp3Path = youtubeDL.downloadMP3(item: item) else {
-                    return
-                }
-                defer {
-                    youtubeDL.deleteMP3(filePath: mp3Path)
-                }
+                        sendApi.sendAudio(audio: audio)
+                    } else {
+                        // Download file
+                        let youtubeDL = YoutubeDL()
 
-                // Send file to user
-                let audio = TelegramSendAudio(
-                    chatId: .int(id: chatId),
-                    audio: mp3Path,
-                    caption: name,
-                    performer: item.snippet.channelTitle,
-                    title: name
-                )
+                        guard let mp3Path = youtubeDL.downloadMP3(item: item) else {
+                            return
+                        }
+                        defer {
+                            youtubeDL.deleteMP3(filePath: mp3Path)
+                        }
 
-                TelegramAudioUpload.uploadAudio(
-                    token: self.app.customConfigService.telegramToken,
-                    audio: audio,
-                    fileName: "\(name).mp3"
-                ) { response in
-                    // TODO: Handle Error
-                    print(response)
+                        // Download the file from YT
+                        let audio = TelegramSendAudio(
+                            chatId: .int(id: chatId),
+                            audio: mp3Path,
+                            caption: name,
+                            performer: item.snippet.channelTitle,
+                            title: name
+                        )
+
+                        TelegramAudioUpload.uploadAudio(
+                            token: self.app.customConfigService.telegramToken,
+                            audio: audio,
+                            fileName: "\(name).mp3"
+                        ) { response in
+                            if let message = response.result {
+                                if let fileId = message.audio?.fileId {
+                                    // Cache it now
+                                    let cache = YoutubeMP3TelegramCache(telegramId: fileId, youtubeId: videoId)
+                                    cache.save(on: self.app.db)
+                                }
+                            }
+
+                            // TODO: Handle Error
+                            print(response)
+                        }
+                    }
                 }
             }
         }
