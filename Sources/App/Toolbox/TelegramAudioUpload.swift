@@ -57,12 +57,6 @@ class TelegramAudioUpload {
                 }
             }, url: URL(string: "https://api.telegram.org/bot\(token)/sendAudio")!)
 
-            func getDocumentsDirectory() -> URL {
-                let paths = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)
-                return paths[0]
-            }
-            try! multiPart.httpBody!.base64EncodedString().write(to: getDocumentsDirectory().appendingPathComponent("shit.txt"), atomically: true, encoding: String.Encoding.utf8)
-
             let session = URLSession(configuration: .default)
 
             let task = session.dataTask(with: multiPart) { data, urlResponse, error in
