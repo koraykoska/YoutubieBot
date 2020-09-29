@@ -27,7 +27,7 @@ extension URLRequest {
     class MultipartFormData {
         var request: URLRequest
         private lazy var boundary: String = {
-           return String(format: "%08X%08X", arc4random(), arc4random())
+            return String(format: "%08X%08X", UInt32.random(in: 0..<UInt32.max), UInt32.random(in: 0..<UInt32.max))
         }()
 
         init(request: URLRequest) {
@@ -90,14 +90,7 @@ extension URLRequest {
 }
 
 fileprivate func contentType(for pathExtension: String) -> String {
-    guard let uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, pathExtension as CFString, nil)?.takeRetainedValue() else {
-        return "application/octet-stream"
-    }
-    let contentTypeCString = UTTypeCopyPreferredTagWithClass(uti, kUTTagClassMIMEType)?.takeRetainedValue()
-    guard let contentType = contentTypeCString as String? else {
-        return "application/octet-stream"
-    }
-    return contentType
+    return mimeType(ext: pathExtension)
 }
 
 fileprivate extension String {

@@ -106,7 +106,7 @@ public struct TelegramApiSequentialHttpProvider: TelegramApiProvider {
             }
             task.resume()
 
-            usleep(sleep)
+            usleep(self.sleep)
         }
     }
 }
