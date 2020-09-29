@@ -86,12 +86,15 @@ struct YoutubeApi {
         self.client = client
     }
 
-    func getVideos(query: String, maxResults: Int = 5) -> EventLoopFuture<Response> {
+    func getVideos(query: String, maxResults: Int = 5, pageToken: String? = nil) -> EventLoopFuture<Response> {
         var uriQuery = "part=snippet"
         uriQuery += "&q=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
         uriQuery += "&type=video"
         uriQuery += "&maxResults=\(maxResults)"
         uriQuery += "&key=\(token)"
+        if let pageToken = pageToken {
+            uriQuery += "&pageToken=\(pageToken)"
+        }
         let uri = URI(string: "https://www.googleapis.com/youtube/v3/search?\(uriQuery)")
 
         let req = ClientRequest(

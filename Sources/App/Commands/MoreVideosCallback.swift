@@ -22,7 +22,7 @@ class MoreVideosCallback: BaseCallbackQuery {
             return false
         }
 
-        return decoded.nextPageToken != nil
+        return decoded.nextPage != nil
     }
 
     let callbackQuery: TelegramCallbackQuery
@@ -66,8 +66,13 @@ class MoreVideosCallback: BaseCallbackQuery {
             return
         }
 
-        guard let nextPageToken = decoded.nextPageToken else {
+        guard let nextPage = decoded.nextPage else {
             return
+        }
+
+        if let message = callbackQuery.message {
+            let searchVideoCommand = SearchVideoCommand(message: message, app: app)
+            searchVideoCommand.nextPage = nextPage
         }
     }
 }

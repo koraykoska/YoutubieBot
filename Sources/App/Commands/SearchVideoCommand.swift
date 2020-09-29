@@ -11,7 +11,7 @@ import TelegramBotPromiseKit
 import PromiseKit
 import Dispatch
 
-class SearchCommand: BaseCommand {
+class SearchVideoCommand: BaseCommand {
 
     static func isParsable(message: TelegramMessage, botName: String) -> Bool {
         guard let text = message.text, !text.hasPrefix("/") else {
@@ -27,6 +27,9 @@ class SearchCommand: BaseCommand {
 
     let app: Application
 
+    // If set, take values from this variable and not message (TelegramMessage)
+    var nextPage: SearchVideoCallbackData.NextPage?
+
     required init(message: TelegramMessage, app: Application) {
         self.message = message
         self.app = app
@@ -37,18 +40,18 @@ class SearchCommand: BaseCommand {
         let chatId = chat.id
 
         // Telegram Send API
-        let sendApi = TelegramSendApi(token: app.customConfigService.telegramToken, sleep: 1000000)
+        let sendApi = TelegramSendApi(token: app.customConfigService.telegramToken, sleep: 500000)
 
         // JSONEncoder
         let encoder = JSONEncoder()
 
         // Search YT Videos
-        let query = (message.text ?? "").deletingPrefix(app.customConfigService.botName)
+        let query = (nextPage?.originalQuery ?? message.text ?? "").deletingPrefix(app.customConfigService.botName)
 
         let youtubeApi = YoutubeApi(token: app.customConfigService.youtubeApiKey, client: app.client)
-        youtubeApi.getVideos(query: query).whenSuccess { response in
+        youtubeApi.getVideos(query: query, pageToken: nextPage?.nextPageToken).whenSuccess { response in
             for i in response.items {
-                let callback = SearchVideoCallbackData(videoId: i.id.videoId, nextPageToken: nil)
+                let callback = SearchVideoCallbackData(videoId: i.id.videoId, nextPage: nil)
                 let ytLink = "https://www.youtube.com/watch?v=\(i.id.videoId ?? "")"
 
                 let keyboard = TelegramInlineKeyboardMarkup(inlineKeyboard: [[
@@ -60,7 +63,10 @@ class SearchCommand: BaseCommand {
                 sendApi.sendMessage(message: message)
             }
 
-            let callback = SearchVideoCallbackData(videoId: nil, nextPageToken: response.nextPageToken)
+            let callback = SearchVideoCallbackData(
+                videoId: nil,
+                nextPage: .init(nextPageToken: response.nextPageToken ?? "", originalQuery: query, maxResults: 5)
+            )
             let keyboard = TelegramInlineKeyboardMarkup(inlineKeyboard: [[
                 TelegramInlineKeyboardButton(text: "Yes, Please 😬", callbackData: try! String(data: encoder.encode(callback), encoding: .utf8)!)
             ]])
@@ -76,5 +82,14 @@ struct SearchVideoCallbackData: Codable {
 
     let videoId: String?
 
-    let nextPageToken: String?
+    let nextPage: NextPage?
+
+    struct NextPage: Codable {
+
+        let nextPageToken: String
+
+        let originalQuery: String
+
+        let maxResults: Int
+    }
 }

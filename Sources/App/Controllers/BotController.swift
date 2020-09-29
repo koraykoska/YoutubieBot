@@ -18,7 +18,7 @@ final class BotController {
     }
 
     func getMessage(id: Int, message: TelegramMessage) {
-        let commands: [BaseCommand.Type] = [StartCommand.self, SearchCommand.self]
+        let commands: [BaseCommand.Type] = [StartCommand.self, SearchVideoCommand.self]
 
         var correctCommands: [BaseCommand] = []
         for command in commands {

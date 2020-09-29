@@ -78,15 +78,15 @@ class DownloadMP3CallbackQuery: BaseCallbackQuery {
                 return
             }
 
+            let name = item.snippet.title.decodingHTMLEntities()
+
             // Informing the User about the Download
             sendApi.sendMessage(
                 message: TelegramSendMessage(
                     chatId: chatId,
-                    text: "Downloading \(item.snippet.title) from \(item.snippet.channelTitle)"
+                    text: "Downloading \(name) from \(item.snippet.channelTitle)"
                 )
             )
-
-            let name = item.snippet.title.decodingHTMLEntities()
 
             // Download file
             let youtubeDL = YoutubeDL()
@@ -110,7 +110,7 @@ class DownloadMP3CallbackQuery: BaseCallbackQuery {
             TelegramAudioUpload.uploadAudio(
                 token: self.app.customConfigService.telegramToken,
                 audio: audio,
-                fileName: "\(item.snippet.title).mp3"
+                fileName: "\(name).mp3"
             ) { response in
                 print(response)
             }
