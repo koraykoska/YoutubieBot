@@ -11,7 +11,7 @@ import Vapor
 
 protocol BaseCallbackQuery {
 
-    static func isParsable(callbackQuery: TelegramCallbackQuery) -> Bool
+    static func isParsable(callbackQuery: TelegramCallbackQuery, app: Application) -> EventLoopFuture<Bool>
 
     var callbackQuery: TelegramCallbackQuery { get }
 

@@ -11,18 +11,12 @@ import TelegramBot
 
 class MoreVideosCallback: BaseCallbackQuery {
 
-    static func isParsable(callbackQuery: TelegramCallbackQuery) -> Bool {
+    static func isParsable(callbackQuery: TelegramCallbackQuery, app: Application) -> EventLoopFuture<Bool> {
         guard let data = callbackQuery.data else {
-            return false
+            return app.db.eventLoop.makeSucceededFuture(false)
         }
 
-        let decoder = JSONDecoder()
-
-        guard let decoded = try? decoder.decode(SearchVideoCallbackData.self, from: data.data(using: .utf8)!) else {
-            return false
-        }
-
-        return decoded.nextPage != nil
+        return SearchVideoCallbackData.find(UUID(uuidString: data), on: app.db).map { return $0 != nil && $0?.nextPageToken != nil }
     }
 
     let callbackQuery: TelegramCallbackQuery
@@ -60,19 +54,21 @@ class MoreVideosCallback: BaseCallbackQuery {
             return
         }
 
-        let decoder = JSONDecoder()
+        SearchVideoCallbackData.find(UUID(uuidString: data), on: app.db).flatMapThrowing { callbackData in
+            guard let callbackData = callbackData else {
+                return
+            }
 
-        guard let decoded = try? decoder.decode(SearchVideoCallbackData.self, from: data.data(using: .utf8)!) else {
-            return
-        }
+            guard let _ = callbackData.nextPageToken else {
+                return
+            }
 
-        guard let nextPage = decoded.nextPage else {
-            return
-        }
+            if let message = self.callbackQuery.message {
+                let searchVideoCommand = SearchVideoCommand(message: message, app: self.app)
+                searchVideoCommand.callbackData = callbackData
 
-        if let message = callbackQuery.message {
-            let searchVideoCommand = SearchVideoCommand(message: message, app: app)
-            searchVideoCommand.nextPage = nextPage
+                try searchVideoCommand.run()
+            }
         }
     }
 }

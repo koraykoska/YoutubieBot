@@ -28,7 +28,7 @@ class SearchVideoCommand: BaseCommand {
     let app: Application
 
     // If set, take values from this variable and not message (TelegramMessage)
-    var nextPage: SearchVideoCallbackData.NextPage?
+    var callbackData: SearchVideoCallbackData?
 
     required init(message: TelegramMessage, app: Application) {
         self.message = message
@@ -42,54 +42,47 @@ class SearchVideoCommand: BaseCommand {
         // Telegram Send API
         let sendApi = TelegramSendApi(token: app.customConfigService.telegramToken, sleep: 500000)
 
-        // JSONEncoder
-        let encoder = JSONEncoder()
-
         // Search YT Videos
-        let query = (nextPage?.originalQuery ?? message.text ?? "").deletingPrefix(app.customConfigService.botName)
+        let query = (callbackData?.originalQuery ?? message.text ?? "").deletingPrefix(app.customConfigService.botName)
 
         let youtubeApi = YoutubeApi(token: app.customConfigService.youtubeApiKey, client: app.client)
-        youtubeApi.getVideos(query: query, pageToken: nextPage?.nextPageToken).whenSuccess { response in
+        youtubeApi.getVideos(query: query, pageToken: callbackData?.nextPageToken).whenSuccess { response in
+            var callbacks = [EventLoopFuture<(item: YoutubeApi.Response.Item, callback: SearchVideoCallbackData)>]()
             for i in response.items {
-                let callback = SearchVideoCallbackData(videoId: i.id.videoId, nextPage: nil)
-                let ytLink = "https://www.youtube.com/watch?v=\(i.id.videoId ?? "")"
-
-                let keyboard = TelegramInlineKeyboardMarkup(inlineKeyboard: [[
-                    TelegramInlineKeyboardButton(text: "Download ⬇️", callbackData: try! String(data: encoder.encode(callback), encoding: .utf8)!)
-                ]])
-                let replyMarkup = TelegramSendMessage.ReplyMarkup.inlineKeyboardMarkup(keyboard: keyboard)
-
-                let message = TelegramSendMessage(chatId: chatId, text: ytLink, replyMarkup: replyMarkup)
-                sendApi.sendMessage(message: message)
+                let callback = SearchVideoCallbackData(videoId: i.id.videoId ?? "")
+                callbacks.append(callback.save(on: self.app.db).map { return (item: i, callback: callback) })
             }
 
-            let callback = SearchVideoCallbackData(
-                videoId: nil,
-                nextPage: .init(nextPageToken: response.nextPageToken ?? "", originalQuery: query, maxResults: 5)
-            )
-            let keyboard = TelegramInlineKeyboardMarkup(inlineKeyboard: [[
-                TelegramInlineKeyboardButton(text: "Yes, Please 😬", callbackData: try! String(data: encoder.encode(callback), encoding: .utf8)!)
-            ]])
-            let replyMarkup = TelegramSendMessage.ReplyMarkup.inlineKeyboardMarkup(keyboard: keyboard)
+            EventLoopFuture<(item: YoutubeApi.Response.Item, callback: SearchVideoCallbackData)>.whenAllSucceed(callbacks, on: self.app.eventLoopGroup.next()).whenSuccess { items in
+                for (item, callback) in items {
+                    let ytLink = "https://www.youtube.com/watch?v=\(item.id.videoId ?? "")"
 
-            let message = TelegramSendMessage(chatId: chatId, text: "More?", replyMarkup: replyMarkup)
-            sendApi.sendMessage(message: message)
+                    let keyboard = TelegramInlineKeyboardMarkup(inlineKeyboard: [[
+                        TelegramInlineKeyboardButton(text: "Download ⬇️", callbackData: callback.id?.uuidString ?? "")
+                    ]])
+                    let replyMarkup = TelegramSendMessage.ReplyMarkup.inlineKeyboardMarkup(keyboard: keyboard)
+
+                    let message = TelegramSendMessage(chatId: chatId, text: ytLink, replyMarkup: replyMarkup)
+                    sendApi.sendMessage(message: message)
+                }
+
+                // More Button
+
+                let callback = SearchVideoCallbackData(
+                    nextPageToken: response.nextPageToken ?? "",
+                    originalQuery: query,
+                    maxResults: 5
+                )
+                callback.save(on: self.app.db).whenSuccess {
+                    let keyboard = TelegramInlineKeyboardMarkup(inlineKeyboard: [[
+                        TelegramInlineKeyboardButton(text: "Yes, Please 😬", callbackData: callback.id?.uuidString ?? "")
+                    ]])
+                    let replyMarkup = TelegramSendMessage.ReplyMarkup.inlineKeyboardMarkup(keyboard: keyboard)
+
+                    let message = TelegramSendMessage(chatId: chatId, text: "More?", replyMarkup: replyMarkup)
+                    sendApi.sendMessage(message: message)
+                }
+            }
         }
-    }
-}
-
-struct SearchVideoCallbackData: Codable {
-
-    let videoId: String?
-
-    let nextPage: NextPage?
-
-    struct NextPage: Codable {
-
-        let nextPageToken: String
-
-        let originalQuery: String
-
-        let maxResults: Int
     }
 }
