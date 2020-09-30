@@ -48,6 +48,9 @@ RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true && \
 RUN apt-get -q install -y ffmpeg
 RUN apt-get -q install -y python3.8
 RUN apt-get -q install -y youtube-dl
+RUN apt-get -q remove -y youtube-dl
+RUN apt-get -q install -y python3-pip
+RUN pip3 install youtube_dl
 
 # Vapor Shit
 RUN rm -r /var/lib/apt/lists/*

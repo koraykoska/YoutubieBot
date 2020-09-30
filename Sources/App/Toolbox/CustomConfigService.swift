@@ -14,6 +14,7 @@ public struct CustomConfigService {
         self.telegramToken = env.get("TELEGRAM_TOKEN")!
         self.botName = env.get("BOT_NAME")!
         self.youtubeApiKey = env.get("YOUTUBE_API_KEY")!
+        self.youtubeCookies = env.get("YOUTUBE_COOKIES")!
     }
 
     public let telegramToken: String
@@ -21,6 +22,8 @@ public struct CustomConfigService {
     public let botName: String
 
     public let youtubeApiKey: String
+
+    public let youtubeCookies: String
 }
 
 extension Application {

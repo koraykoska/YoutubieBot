@@ -15,7 +15,7 @@ struct YoutubeDL {
         self.tmpPath = tmpPath
     }
 
-    func downloadMP3(item: YoutubeApi.Response.Item) -> String? {
+    func downloadMP3(item: YoutubeApi.Response.Item, cookies: String) -> String? {
         guard let videoId = item.id.videoId else {
             return nil
         }
@@ -24,11 +24,21 @@ struct YoutubeDL {
         let tmpName = "\(UUID().uuidString)"
         let filePath = "\"\(tmpPath)/\(tmpName).%(ext)s\""
 
+        let cookiesCommand = """
+        rm /tmp/cookies.txt && tee -a /tmp/cookies.txt << END
+        \(cookies)
+        END
+        """
+        _ = shellOutput(cookiesCommand)
+
         let command = """
-        youtube-dl -x --audio-format mp3 --embed-thumbnail -o \(filePath) "\(videoUrl)"
+        youtube-dl --cookies cookies.txt --geo-bypass --geo-bypass-country US -x --audio-format mp3 --embed-thumbnail -o \(filePath) "\(videoUrl)"
         """
 
         let success = shell(command.split(separator: " ").map { String($0) })
+
+        // Remove cookies.txt
+        _ = shellOutput("rm /tmp/cookies.txt")
 
         if success == 0 {
             let fileName = "\(tmpPath)/\(tmpName).mp3"
