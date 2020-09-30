@@ -11,83 +11,102 @@ import TelegramBot
 #if os(Linux)
 import FoundationNetworking
 #endif
+import Vapor
+import SwiftyRequest
 
 class TelegramAudioUpload {
 
-    static func uploadAudio(token: String, audio: TelegramSendAudio, fileName: String, response: @escaping (_ resp: TelegramResponse<TelegramMessage>) -> Void) {
-        let queue = DispatchQueue(label: "TelegramSendAudio")
+    let token: String
+
+    var request: RestRequest?
+
+    init(token: String) {
+        self.token = token
+    }
+
+    func uploadAudio(audio: TelegramSendAudio, fileName: String, response: @escaping (_ resp: TelegramResponse<TelegramMessage>) -> Void) {
+        self.request = RestRequest(method: .post, url: "https://api.telegram.org/bot\(token)/sendAudio")
+
+        let multiPart = MultipartFormData()
+        request?.contentType = multiPart.contentType
+
+        let url = URL(fileURLWithPath: audio.audio)
+        if let data = try? Data.init(contentsOf: url) {
+            multiPart.append(data, withName: "audio", mimeType: mimeType(ext: url.pathExtension), fileName: fileName)
+        }
+
+        switch audio.chatId {
+        case .int(let id):
+            multiPart.append("\(id)", withName: "chat_id")
+        case .string(let id):
+            multiPart.append(id, withName: "chat_id")
+        }
+
+        if let caption = audio.caption {
+            multiPart.append("\(caption)", withName: "caption")
+        }
+        if let parseMode = audio.parseMode {
+            multiPart.append("\(parseMode)", withName: "parseMode")
+        }
+        if let duration = audio.duration {
+            multiPart.append("\(duration)", withName: "duration")
+        }
+        if let performer = audio.performer {
+            multiPart.append("\(performer)", withName: "performer")
+        }
+        if let title = audio.title {
+            multiPart.append("\(title)", withName: "title")
+        }
+        if let thumb = audio.thumb {
+            multiPart.append("\(thumb)", withName: "thumb")
+        }
+        if let disableNotification = audio.disableNotification {
+            multiPart.append("\(disableNotification)", withName: "disableNotification")
+        }
+        if let replyToMessageId = audio.replyToMessageId {
+            multiPart.append("\(replyToMessageId)", withName: "replyToMessageId")
+        }
+
+        try? request?.messageBody = multiPart.toData()
+
+        let queue = DispatchQueue(label: "MultiPartRequest")
 
         queue.async {
-            let multiPart = URLRequest(multipartFormData: { formData in
-                try? formData.append(filePath: audio.audio, name: "audio", fileName: fileName)
+            let group = DispatchGroup()
 
-                switch audio.chatId {
-                case .int(let id):
-                    formData.append(value: "\(id)", name: "chat_id")
-                case .string(let id):
-                    formData.append(value: id, name: "chat_id")
-                }
+            group.enter()
+            self.request?.responseData { result in
+                switch result {
+                case .success(let telegramResponse):
+                    let status = telegramResponse.status.code
+                    guard status >= 200 && status < 300 else {
+                        // This is a non typical error response and should be considered a server error.
+                        let err = TelegramResponse<TelegramMessage>(error: .serverError(nil))
+                        response(err)
+                        return
+                    }
 
-                if let caption = audio.caption {
-                    formData.append(value: "\(caption)", name: "caption")
-                }
-                if let parseMode = audio.parseMode {
-                    formData.append(value: "\(parseMode)", name: "parseMode")
-                }
-                if let duration = audio.duration {
-                    formData.append(value: "\(duration)", name: "duration")
-                }
-                if let performer = audio.performer {
-                    formData.append(value: "\(performer)", name: "performer")
-                }
-                if let title = audio.title {
-                    formData.append(value: "\(title)", name: "title")
-                }
-                if let thumb = audio.thumb {
-                    formData.append(value: "\(thumb)", name: "thumb")
-                }
-                if let disableNotification = audio.disableNotification {
-                    formData.append(value: "\(disableNotification)", name: "disableNotification")
-                }
-                if let replyToMessageId = audio.replyToMessageId {
-                    formData.append(value: "\(replyToMessageId)", name: "replyToMessageId")
-                }
-                if let disableNotification = audio.disableNotification {
-                    formData.append(value: "\(disableNotification)", name: "disableNotification")
-                }
-            }, url: URL(string: "https://api.telegram.org/bot\(token)/sendAudio")!)
-
-            let session = URLSession(configuration: .default)
-
-            let task = session.dataTask(with: multiPart) { data, urlResponse, error in
-                guard let urlResponse = urlResponse as? HTTPURLResponse, let data = data, error == nil else {
+                    do {
+                        let decoder = JSONDecoder()
+                        decoder.keyDecodingStrategy = .convertFromSnakeCase
+                        let decoded = try decoder.decode(TelegramApiResponse<TelegramMessage>.self, from: telegramResponse.body)
+                        // We got the Result object
+                        let res = TelegramResponse(response: decoded)
+                        response(res)
+                    } catch {
+                        // We don't have the response we expected...
+                        let err = TelegramResponse<TelegramMessage>(error: .decodingError(error))
+                        response(err)
+                    }
+                case .failure(let error):
                     let err = TelegramResponse<TelegramMessage>(error: .serverError(error))
                     response(err)
-                    return
                 }
 
-                let status = urlResponse.statusCode
-                guard status >= 200 && status < 300 else {
-                    // This is a non typical error response and should be considered a server error.
-                    let err = TelegramResponse<TelegramMessage>(error: .serverError(nil))
-                    response(err)
-                    return
-                }
-
-                do {
-                    let decoder = JSONDecoder()
-                    decoder.keyDecodingStrategy = .convertFromSnakeCase
-                    let decoded = try decoder.decode(TelegramApiResponse<TelegramMessage>.self, from: data)
-                    // We got the Result object
-                    let res = TelegramResponse(response: decoded)
-                    response(res)
-                } catch {
-                    // We don't have the response we expected...
-                    let err = TelegramResponse<TelegramMessage>(error: .decodingError(error))
-                    response(err)
-                }
+                group.leave()
             }
-            task.resume()
+
+            group.wait()
         }
     }
 }

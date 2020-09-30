@@ -12,6 +12,9 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0"),
 
+        // Kitura HTTP Client
+        .package(name: "SwiftyRequest", url: "https://github.com/IBM-Swift/SwiftyRequest.git", from: "3.1.0"),
+
         // TelegramBot
         .package(name: "TelegramBot", url: "https://github.com/Boilertalk/TelegramBot.swift.git", from: "0.5.0"),
     ],
@@ -25,6 +28,7 @@ let package = Package(
                 .product(name: "TelegramBot", package: "TelegramBot"),
                 .product(name: "TelegramBotVapor", package: "TelegramBot"),
                 .product(name: "TelegramBotPromiseKit", package: "TelegramBot"),
+                .product(name: "SwiftyRequest", package: "SwiftyRequest"),
             ],
             swiftSettings: [
                 // Enable better optimizations when building in Release configuration. Despite the use of

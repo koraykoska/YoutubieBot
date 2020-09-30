@@ -32,7 +32,7 @@ struct YoutubeDL {
         _ = shellOutput(cookiesCommand)
 
         let command = """
-        youtube-dl --cookies cookies.txt --geo-bypass --geo-bypass-country US -x --audio-format mp3 --embed-thumbnail -o \(filePath) "\(videoUrl)"
+        youtube-dl --cookies /tmp/cookies.txt --geo-bypass --geo-bypass-country US -x --audio-format mp3 --embed-thumbnail -o \(filePath) "\(videoUrl)"
         """
 
         let success = shell(command.split(separator: " ").map { String($0) })
