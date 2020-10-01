@@ -8,7 +8,7 @@ final class YoutubeApiTests: XCTestCase {
         defer { app.shutdown() }
         try configure(app)
 
-        let youtubeApi = YoutubeApi(token: "AIzaSyAE7hUEor89nZEfa_H_yjQittVg30ptq5c", client: app.client)
+        let youtubeApi = YoutubeApi(token: app.customConfigService.youtubeApiKey, client: app.client)
 
         let getVideos = youtubeApi.getVideos(query: "bad guy")
 
