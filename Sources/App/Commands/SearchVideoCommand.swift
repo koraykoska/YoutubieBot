@@ -43,7 +43,8 @@ class SearchVideoCommand: BaseCommand {
         let sendApi = TelegramSendApi(token: app.customConfigService.telegramToken, sleep: 500000)
 
         // Search YT Videos
-        let query = (callbackData?.originalQuery ?? message.text ?? "").deletingPrefix(app.customConfigService.botName)
+        let messageText = message.text?.deletingPrefix(app.customConfigService.botName)
+        let query = (callbackData?.originalQuery ?? messageText ?? "").deletingPrefix(app.customConfigService.botName)
 
         let youtubeApi = YoutubeApi(token: app.customConfigService.youtubeApiKey, client: app.client)
         youtubeApi.getVideos(query: query, pageToken: callbackData?.nextPageToken).whenSuccess { response in
