@@ -18,7 +18,22 @@ class SearchVideoCommand: BaseCommand {
             return false
         }
 
-        return true
+        // Reply to all messages in private chat
+        if message.chat.type == .privateChat {
+            return true
+        }
+
+        // Reply to mentions
+        if let b = message.text?.contains(botName), b {
+            return true
+        }
+
+        // Reply to replies
+        if let reply = message.replyToMessage, let b = reply.from?.isBot, b, reply.from?.username == botName.deletingPrefix("@") {
+            return true
+        }
+
+        return false
     }
 
     static let command: String = ""
@@ -44,7 +59,7 @@ class SearchVideoCommand: BaseCommand {
 
         // Search YT Videos
         let messageText = message.text?.deletingPrefix(app.customConfigService.botName)
-        let query = (callbackData?.originalQuery ?? messageText ?? "").deletingPrefix(app.customConfigService.botName)
+        let query = (callbackData?.originalQuery ?? messageText ?? "").replacingOccurrences(of: app.customConfigService.botName, with: "")
 
         let youtubeApi = YoutubeApi(token: app.customConfigService.youtubeApiKey, client: app.client)
         youtubeApi.getVideos(query: query, pageToken: callbackData?.nextPageToken).whenSuccess { response in
